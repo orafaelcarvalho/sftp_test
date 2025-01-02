@@ -43,7 +43,7 @@ func (s *SFTPClientWrapper) Close() error {
 type DialFunc func(network, addr string, config *ssh.ClientConfig) (*ssh.Client, error)
 
 // Connect estabelece uma conexão SFTP.
-func Connect(user, password, host string, port int, dial DialFunc) (*SFTPClient, error) {
+func Connect(user, password, host string, port int, dial DialFunc, newSFTPClient func(conn *ssh.Client) (*sftp.Client, error)) (*SFTPClient, error) {
 	// Configuração do SSH
 	config := &ssh.ClientConfig{
 		User: user,
@@ -61,7 +61,7 @@ func Connect(user, password, host string, port int, dial DialFunc) (*SFTPClient,
 	}
 
 	// Cria o cliente SFTP
-	sftpClient, err := sftp.NewClient(conn)
+	sftpClient, err := newSFTPClient(conn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create SFTP client: %w", err)
 	}

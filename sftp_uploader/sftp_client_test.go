@@ -6,8 +6,10 @@ import (
 	"io"
 	"testing"
 
+	"github.com/pkg/sftp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"golang.org/x/crypto/ssh"
 )
 
 // Mock para a interface SFTPClientInterface
@@ -41,6 +43,24 @@ type MockWriter struct {
 func (m *MockWriter) Write(p []byte) (n int, err error) {
 	args := m.Called(p)
 	return args.Int(0), args.Error(1)
+}
+
+type MockDialFunc struct {
+	mock.Mock
+}
+
+func (m *MockDialFunc) Dial(network, address string, config *ssh.ClientConfig) (*ssh.Client, error) {
+	args := m.Called(network, address, config)
+	return args.Get(0).(*ssh.Client), args.Error(1)
+}
+
+// Mock para ssh.Client
+type MockSSHClient struct {
+	mock.Mock
+}
+
+func (m *MockSSHClient) Close() error {
+	return nil
 }
 
 func TestUploadFile_Success(t *testing.T) {
@@ -194,4 +214,20 @@ func TestUploadFile_EmptyData(t *testing.T) {
 
 	// Verificando se nada foi escrito no arquivo
 	assert.Equal(t, "", mockWriter.String())
+}
+
+func TestConnect_Success(t *testing.T) {
+	mockDial := func(network, address string, config *ssh.ClientConfig) (*ssh.Client, error) {
+		return &ssh.Client{}, nil
+	}
+
+	mockSFTPClient := &sftp.Client{}
+	mockNewSFTPClient := func(conn *ssh.Client) (*sftp.Client, error) {
+		return mockSFTPClient, nil
+	}
+
+	client, err := Connect("testuser", "testpassword", "localhost", 22, mockDial, mockNewSFTPClient)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, client)
 }
